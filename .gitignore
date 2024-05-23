@@ -172,7 +172,7 @@ datasets/
 data/svd/
 
 ## Ignore the not original zip files
-data/svd_processed.zip
+data/svd_original.zip
 
 ## Ignore cached pipeline classes
 pipeline/__pycache__
