@@ -281,14 +281,17 @@ class DatasetManager(DataProcessing):
         - dataset (DataFrame): Dataframe containing the data. 
         - file_path (str): Path to where the file will be saved. File type has to be specified.
         """
-        # BUG: .csv and .json alter the dataset and do not save it properly.
         try:
             if file_path.endswith('.csv'):
-                dataset['audio_data'] = dataset['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
-                dataset.to_csv(file_path)
+                # Convert lists to JSON strings
+                dataset_copy = dataset.copy()
+                dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
+                dataset_copy.to_csv(file_path, index=False)
             elif file_path.endswith('.json'):
-                dataset['audio_data'] = dataset['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
-                dataset.to_json(file_path, orient='records')
+                # Convert lists to JSON strings
+                dataset_copy = dataset.copy()
+                dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
+                dataset_copy.to_json(file_path, orient='records', lines=True)
             elif file_path.endswith('.pkl'):
                 dataset.to_pickle(file_path)
             else:
@@ -393,7 +396,7 @@ class AudioProcessing(DataProcessing):
     @staticmethod
     def pad_audio(audio, sample_rate, desired_length):
             """
-            Pads the audio data to the desired length in seconds.
+            Center pads the audio data to the desired length in seconds.
 
             Parameters:
             - audio (numpy array): Audio data to be padded.
@@ -408,8 +411,10 @@ class AudioProcessing(DataProcessing):
             if current_length > desired_length_samples:
                 return audio[:desired_length_samples]
             else:
-                padding = desired_length_samples - current_length
-                return np.pad(audio, (0, padding), 'constant')
+                total_padding = desired_length_samples - current_length
+                padding_before = total_padding // 2
+                padding_after = total_padding - padding_before
+                return np.pad(audio, (padding_before, padding_after), 'constant')
         
     @staticmethod
     def pad_audios(audios, sample_rates, desired_length):
