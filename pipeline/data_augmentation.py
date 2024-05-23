@@ -95,9 +95,6 @@ class DataAugmentation:
         aug_phrase_dataset = pd.DataFrame(columns=['speaker_id', 'audio_path', 'audio_data', 'sample_rate', 'sex', 'diagnosis'])
         used_indices = set()
 
-        print(vowel_dataset)
-        print(phrase_dataset)
-
         while len(used_indices) < n_audios:
             idx = random.randint(0, len(vowel_dataset) - 1)
             if idx in used_indices:
@@ -146,6 +143,60 @@ class DataAugmentation:
             DataAugmentation._add_entry_dataframe(aug_phrase_dataset, phrase_entry['speaker_id'], aug_phrase_audio_path, aug_phrase_audio_data, phrase_sample_rate)
 
         return aug_vowel_dataset, aug_phrase_dataset
+    
+    @staticmethod
+    def random_augmentation(vowel_dataset, phrase_dataset, vowel_stats, phrase_stats, n_augmentations):
+        """
+        Performs random augmentations on the datasets.
+
+        Parameters:
+        - vowel_dataset (DataFrame): The vowel dataset to augment.
+        - phrase_dataset (DataFrame): The phrase dataset to augment.
+        - vowel_stats (DataFrame): Statistics of the vowel dataset.
+        - phrase_stats (DataFrame): Statistics of the phrase dataset.
+        - n_augmentations (int): Total number of augmentations to perform.
+
+        Returns:
+        - Augmented vowel and phrase datasets.
+        """
+        augmentation_types = ['noise', 'stretch']
+        noise_level_range = (0.02, 0.08)
+        stretch_rate_range = (0.8, 1.2)
+        aug_vowel_datasets = []
+        aug_phrase_datasets = []
+
+        for _ in range(n_augmentations):
+            aug_type = random.choice(augmentation_types)
+            if aug_type == 'noise':
+                noise_level = random.uniform(*noise_level_range)
+                aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.augment_audio(
+                    vowel_dataset=vowel_dataset,
+                    phrase_dataset=phrase_dataset,
+                    vowel_stats=vowel_stats,
+                    phrase_stats=phrase_stats,
+                    aug_type=aug_type,
+                    n_audios=1,
+                    noise_level=noise_level
+                )
+            elif aug_type == 'stretch':
+                stretch_rate = random.uniform(*stretch_rate_range)
+                aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.augment_audio(
+                    vowel_dataset=vowel_dataset,
+                    phrase_dataset=phrase_dataset,
+                    vowel_stats=vowel_stats,
+                    phrase_stats=phrase_stats,
+                    aug_type=aug_type,
+                    n_audios=1,
+                    stretch_rate=stretch_rate
+                )
+
+            aug_vowel_datasets.append(aug_vowel_dataset)
+            aug_phrase_datasets.append(aug_phrase_dataset)
+
+        combined_vowel_dataset = pd.concat(aug_vowel_datasets, ignore_index=True)
+        combined_phrase_dataset = pd.concat(aug_phrase_datasets, ignore_index=True)
+
+        return combined_vowel_dataset, combined_phrase_dataset
 
     @staticmethod
     def _check_fix_length(audio, original_length):

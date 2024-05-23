@@ -283,12 +283,10 @@ class DatasetManager(DataProcessing):
         """
         try:
             if file_path.endswith('.csv'):
-                # Convert lists to JSON strings
                 dataset_copy = dataset.copy()
                 dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
                 dataset_copy.to_csv(file_path, index=False)
             elif file_path.endswith('.json'):
-                # Convert lists to JSON strings
                 dataset_copy = dataset.copy()
                 dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
                 dataset_copy.to_json(file_path, orient='records', lines=True)
