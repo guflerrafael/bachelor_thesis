@@ -1,0 +1,14 @@
+{
+    "Reinke's edema": 0.27,
+    "Contact pachydermy": 0.28,
+    "Cordectomy": 0.3,
+    "Psychogenic dysphonia": 0.43,
+    "Spasmodic dysphonia": 0.51,
+    "Dysphonia": 0.58,
+    "Functional dysphonia": 0.65,
+    "Laryngitis": 0.68,
+    "Hyperfunctional dysphonia": 1.3,
+    "Paralysis": 1.61,
+    "Other": 4.82,
+    "Healthy": 5.84
+}
