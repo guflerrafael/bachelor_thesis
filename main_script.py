@@ -44,10 +44,10 @@ print(phrase_dataset_stats)
 
 # Resample audios
 target_sample_rate = 16000
-vowel_dataset.loc[:, 'audio_data'] = AudioProcessing.resample_all_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], target_sample_rate)
-phrase_dataset.loc[:, 'audio_data'] = AudioProcessing.resample_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], target_sample_rate)
-vowel_dataset.loc[:, 'sample_rate'] = target_sample_rate
-phrase_dataset.loc[:, 'sample_rate'] = target_sample_rate
+vowel_dataset['audio_data'] = AudioProcessing.resample_all_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], target_sample_rate)
+phrase_dataset['audio_data'] = AudioProcessing.resample_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], target_sample_rate)
+vowel_dataset['sample_rate'] = target_sample_rate
+phrase_dataset['sample_rate'] = target_sample_rate
 
 # Might be moved to utilites class
 def round_up_to_half(number):
@@ -67,10 +67,16 @@ vowel_dataset_stats = dm.analyse_dataset(vowel_dataset)
 phrase_dataset_stats = dm.analyse_dataset(phrase_dataset)
 vowel_target_duration = round_up_to_half(max(vowel_dataset_stats['max_duration']))
 phrase_target_duration = round_up_to_half(max(phrase_dataset_stats['max_duration']))
-vowel_dataset.loc[:, 'audio_data'] = AudioProcessing.pad_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], vowel_target_duration)
-phrase_dataset.loc[:, 'audio_data'] = AudioProcessing.pad_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], phrase_target_duration)
-# dm.save_dataset(vowel_dataset, os.path.join('datasets', 'processed', 'vowel_dataset.csv'))
-# dm.save_dataset(phrase_dataset, os.path.join('datasets', 'processed', 'phrase_dataset.csv'))
+vowel_dataset['audio_data'] = AudioProcessing.pad_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], vowel_target_duration)
+phrase_dataset['audio_data'] = AudioProcessing.pad_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], phrase_target_duration)
+
+# Save padded audios
+DatasetManager.save_all_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], vowel_dataset['audio_path'])
+DatasetManager.save_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], phrase_dataset['audio_path'])
+
+# Save dataset
+dm.save_dataset(vowel_dataset, os.path.join('datasets', 'processed', 'vowel_dataset.pkl'))
+dm.save_dataset(phrase_dataset, os.path.join('datasets', 'processed', 'phrase_dataset.pkl'))
 
 # Extract statistics from dataset
 vowel_dataset_stats = dm.analyse_dataset(vowel_dataset)
@@ -169,17 +175,15 @@ print(phrase_dataset)
 
 # TODO: Calculate padsize 
 
-vowel_feature_dataset, phrase_feature_dataset = FeatureDatasetManager.create_dataset(
-    vowel_dataset=vowel_dataset,
-    phrase_dataset=phrase_dataset,
-    padsize_mfcc=500,
-    padsize_wav2vec2=500
-)
+# vowel_feature_dataset, phrase_feature_dataset = FeatureDatasetManager.create_dataset(
+#     vowel_dataset=vowel_dataset,
+#     phrase_dataset=phrase_dataset,
+#     padsize_mfcc=500,
+#     padsize_wav2vec2=500
+# )
 
-print(vowel_feature_dataset)
-print(phrase_feature_dataset)
-
-print()
+# print(vowel_feature_dataset)
+# print(phrase_feature_dataset)
 
 # ------------- CLASSIFICATION -----------------------------------------------------
 

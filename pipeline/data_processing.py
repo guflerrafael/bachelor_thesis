@@ -281,6 +281,7 @@ class DatasetManager(DataProcessing):
         - dataset (DataFrame): Dataframe containing the data. 
         - file_path (str): Path to where the file will be saved. File type has to be specified.
         """
+        # BUG: .csv and .json alter the dataset and do not save it properly.
         try:
             if file_path.endswith('.csv'):
                 dataset['audio_data'] = dataset['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
