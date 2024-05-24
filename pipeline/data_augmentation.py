@@ -85,12 +85,6 @@ class DataAugmentation:
         Returns:
         - Tuple containing the augmented vowel dataset and augmented phrase dataset.
         """
-
-        """
-        TODO: Idea is to make the parameter value random as well. The augmentation args can be given,
-        but the default takes a random value within a defined range. This ensures a more well-distributed dataset.
-        """
-
         aug_vowel_dataset = pd.DataFrame(columns=['speaker_id', 'audio_path', 'audio_data', 'sample_rate', 'sex', 'diagnosis'])
         aug_phrase_dataset = pd.DataFrame(columns=['speaker_id', 'audio_path', 'audio_data', 'sample_rate', 'sex', 'diagnosis'])
         used_indices = set()

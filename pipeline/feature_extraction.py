@@ -3,30 +3,21 @@ import librosa
 import pandas as pd
 import torch
 import torchaudio
+import parselmouth
 from pipeline.data_processing import DatasetManager 
 
 ## It seems to provide all the features necessary (f0, pitch, jitter, shimmer etc.)
 ## The documentation also provides very good explanation of the algorithms used to calculate the specific measurements.
 ## This can be helpful when writing the actual methods.
 
-# Library seems to use function provided by Praat and just refactor them to Python. For now, use the algorithms implemented, 
-# and then maybe later choose something other
-
-## TODO:
-# Implement a second class FeatureDatasetManager that has the following functionalities:
-# - create_feature_datasets: Creates both a vowel and phrase featureset and returns them.
-# - create_vowel_feature_dataset: Creates a vowel featureset and returns it.
-# - create_phrase_feature_dataset: Creates a phrase featureset and returns it.
-
 SAMPLE_RATE = 16000
 DEVICE = 'mps'
 
-class FeatureDatasetManager(DatasetManager):
+class FeatureDatasetManager():
     def __init__(self):
         # self._sample_rate = 16000
         # self._device = 'mps'
         pass
-    
     '''
     def set_sample_rate(self, sample_rate):
         self._sample_rate = sample_rate
@@ -70,13 +61,18 @@ class FeatureDatasetManager(DatasetManager):
         # TODO: Padsize should be the maximum feature lenght
         ## Idea: Calculate size of features by window of calculation and size of the audios.
         vowel_feature_dataset = pd.DataFrame(columns=['mfcc', 'f0', 'jitter', 'shimmer', 'sex', 'diagnosis'])
-        audio_data = vowel_dataset['audio_data']
+        audio_datas = vowel_dataset['audio_data']
 
-        vowel_feature_dataset['mfcc'] = audio_data.apply(lambda audio_data: AudioFeatureExtraction.extract_mfcc(audio_data, padsize=padsize_mfcc, n_mfcc=n_mfcc))
+        vowel_feature_dataset['mfcc'] = audio_datas.apply(lambda audio_data: AudioFeatureExtraction.extract_mfcc(audio_data, padsize=padsize_mfcc, n_mfcc=n_mfcc))
         # AVERAGE - vowel_feature_dataset['mfcc'] = audio_data.apply(lambda audio_data: np.average(AudioFeatureExtraction.extract_mfcc(audio_data, padsize=padsize_mfcc, n_mfcc=n_mfcc), axis=1))
-        vowel_feature_dataset['f0'] = audio_data.apply(lambda audio_data: AudioFeatureExtraction.extract_f0(audio_data, n_harmonics=n_harmonics_f0))
-        vowel_feature_dataset['jitter'] = audio_data.apply(lambda audio_data: AudioFeatureExtraction.extract_jitter(audio_data))
-        vowel_feature_dataset['shimmer'] = audio_data.apply(lambda audio_data: AudioFeatureExtraction.extract_shimmer(audio_data))
+        audio_features = audio_datas.apply(
+            lambda audio_data: AudioFeatureExtraction.extract_praat_measurements(audio_data)
+        ).apply(pd.Series)
+        vowel_feature_dataset['f0'] = audio_features['f0_mean']
+        vowel_feature_dataset['jitter'] = audio_features['local_jitter']
+        # vowel_feature_dataset['jitter'] = audio_features['local_abs_jitter']
+        vowel_feature_dataset['shimmer'] = audio_features['local_shimmer']
+        # vowel_feature_dataset['shimmer'] = audio_features['local_db_shimmer']
         vowel_feature_dataset['sex'] = vowel_dataset['sex'].apply(lambda sex: AudioFeatureExtraction.label_sex(sex))
         vowel_feature_dataset['diagnosis'] = vowel_dataset['diagnosis'].apply(lambda diagnosis: AudioFeatureExtraction.label_diagnosis(diagnosis))
 
@@ -104,10 +100,6 @@ class FeatureDatasetManager(DatasetManager):
         phrase_feature_dataset['diagnosis'] = phrase_dataset['diagnosis'].apply(lambda diagnosis: AudioFeatureExtraction.label_diagnosis(diagnosis))
 
         return phrase_feature_dataset
-
-    def save_dataset(dataset, file_path):
-        return super().save_dataset(dataset=dataset, file_path=file_path)
-
 
 class AudioFeatureExtraction:
     ## QUESTION --------------
@@ -161,72 +153,40 @@ class AudioFeatureExtraction:
 
         return padded_wav2vec2_features
     
-    def extract_f0(audio, n_harmonics=5):
+    def extract_praat_measurements(audio, f0_min=75, f0_max=300):
         '''
-        Extracts the estimated fundamental frequency using the Harmonic Product Spectrum method.
+        Extracts all the vowel features using parselmouth (Praat). The algorithms are tested and evaluated, thus providing a solid computation.
 
         Parameters:
         - audio (ndarray): The audio signal (numpy array).
-        - n_harmonics (optional) (int): The number of harmonics to consider in the HPS calculation.
+        - f0_min (int, optional): The minimum fundamental frequency to consider for pitch extraction. Default is 75 Hz.
+        - f0_max (int, optional): The maximum fundamental frequency to consider for pitch extraction. Default is 300 Hz.
 
         Returns:
-        - f0: The estimated fundamental frequency.
+        - dict: A dictionary containing the following keys and their corresponding extracted values:
+            - 'f0_mean': Mean fundamental frequency (f0) in Hertz.
+            - 'local_jitter': Local jitter in the audio signal.
+            - 'local_abs_jitter': Local absolute jitter in the audio signal.
+            - 'local_shimmer': Local shimmer in the audio signal.
+            - 'local_db_shimmer': Local shimmer in decibels in the audio signal.
         '''
-        windowed_audio = audio * np.hanning(len(audio))
-        spectrum = np.abs(np.fft.rfft(windowed_audio))
-        freq = np.fft.rfftfreq(len(windowed_audio), d=1./SAMPLE_RATE)
-        hps = spectrum.copy()
-        for h in range(2, n_harmonics+1):
-            decimated = spectrum[::h]
-            hps[:len(decimated)] *= decimated
-        f0_idx = np.argmax(hps)
-        f0 = freq[f0_idx]
+        sound = parselmouth.Sound(audio)
+        pitch = parselmouth.praat.call(sound, "To Pitch", 0.0, f0_min, f0_max) # Create a praat pitch object
+        f0_mean = parselmouth.praat.call(pitch, "Get mean", 0, 0, 'Hertz') # Get mean pitch
+        point_process = parselmouth.praat.call(sound, "To PointProcess (periodic, cc)", f0_min, f0_max)
+        local_jitter = parselmouth.praat.call(point_process, "Get jitter (local)", 0, 0, 0.0001, 0.02, 1.3)
+        local_abs_jitter = parselmouth.praat.call(point_process, "Get jitter (local, absolute)", 0, 0, 0.0001, 0.02, 1.3)
+        local_shimmer = parselmouth.praat.call([sound, point_process], "Get shimmer (local)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+        local_db_shimmer = parselmouth.praat.call([sound, point_process], "Get shimmer (local_dB)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
 
-        return f0
-    
-    # TODO: Check source of calculation and either change them or write the used method down. 
-    def extract_jitter(audio):
-        '''
-        Extracts the average jitter value from the audio sample.
+        return {
+            'f0_mean': f0_mean,
+            'local_jitter': local_jitter,
+            'local_abs_jitter': local_abs_jitter,
+            'local_shimmer': local_shimmer,
+            'local_db_shimmer': local_db_shimmer
+        }
 
-        Parameters:
-        - audio (ndarray): The audio signal (numpy array).
-
-        Returns:
-        - jitter: The jitter value.
-        '''
-        # Extract pitch (f0) using librosa's piptrack
-        pitches, magnitudes = librosa.core.piptrack(y=audio, sr=SAMPLE_RATE)
-        pitches = pitches[magnitudes > np.median(magnitudes)]
-        if len(pitches) < 2:
-            return 0.0
-        # Calculate jitter as the average absolute difference between consecutive pitch periods
-        pitch_periods = 1.0 / pitches
-        jitter = np.mean(np.abs(np.diff(pitch_periods)) / pitch_periods[:-1])
-
-        return jitter
-    
-    # TODO: Check source of calculation and either change them or write the used method down. 
-    def extract_shimmer(audio):
-        '''
-        Extracts the average shimmer value from the audio sample.
-
-        Parameters:
-        - audio (ndarray): The audio signal (numpy array).
-
-        Returns:
-        - shimmer: The shimmer value.
-        '''
-        # Calculate the amplitude envelope of the signal
-        amplitude_envelope = np.abs(audio)
-        if len(amplitude_envelope) < 2:
-            return 0.0
-        # Calculate shimmer as the average absolute difference between consecutive amplitude values
-        shimmer = np.mean(np.abs(np.diff(amplitude_envelope)) / amplitude_envelope[:-1])
-
-        return shimmer
-
-    @staticmethod
     def label_sex(sex):
         '''
         Encode sex into binary label.
@@ -244,7 +204,6 @@ class AudioFeatureExtraction:
         else:
             raise ValueError(f"{sex} is not supported. Supported sexes are: 'male' or 'female'.")
 
-    @staticmethod
     def label_diagnosis(diagnosis):
         '''
         Encode diagnosis into binary label.

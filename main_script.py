@@ -162,8 +162,8 @@ vowel_feature_dataset, phrase_feature_dataset = FeatureDatasetManager.create_dat
 )
 
 # Save dataset
-FeatureDatasetManager.save_dataset(vowel_feature_dataset, os.path.join('datasets', 'feature_extracted', 'vowel_dataset.pkl'))
-FeatureDatasetManager.save_dataset(phrase_feature_dataset, os.path.join('datasets', 'feature_extracted', 'phrase_dataset.pkl'))
+DatasetManager.save_dataset(vowel_feature_dataset, os.path.join('datasets', 'feature_extracted', 'vowel_dataset.pkl'))
+DatasetManager.save_dataset(phrase_feature_dataset, os.path.join('datasets', 'feature_extracted', 'phrase_dataset.pkl'))
 
 print(vowel_feature_dataset)
 print(phrase_feature_dataset)
