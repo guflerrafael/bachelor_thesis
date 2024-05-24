@@ -60,7 +60,7 @@ class DataAugmentation:
         return librosa.effects.time_stretch(y=audio, rate=stretch_rate)
 
     @staticmethod
-    def augment_audio(vowel_dataset, phrase_dataset, vowel_stats, phrase_stats, aug_type, n_audios, noise_level=0.05, shift_steps=2.5, stretch_rate=0.9):
+    def augment_audio(vowel_dataset, phrase_dataset, aug_type, n_audios, noise_level=0.05, stretch_rate=0.9):
         """
         Augments a given dataset using the specified augmentation type.
 
@@ -68,19 +68,13 @@ class DataAugmentation:
         the passed datasets only contains said entries. For each sample type, a empty dataset will be created appon calling the method.
         These datasets contain the augmented audios, which will be returned to the parent method after data augmentation is complete.
 
-        A second version of the program could split each augmentation type, giving the user more flexibility in choosing the desired augmentation method.
-        This would also make more sense regarding the additional parameters such as noise_level, shift_steps and stretch_rate. 
-    
-        In the current version, the aug_type chooses the desired type of augmentation.
-
         Parameters:
         - vowel_dataset (DataFrame): DataFrame containing vowel audio samples to be augmented.
         - phrase_dataset (DataFrame): DataFrame containing phrase audio samples to be augmented.
         - aug_type (str): The type of augmentation to apply ('noise', 'pitch', 'stretch').
         - n_audios (int): The number of audio samples to augment.
-        - noise_level (float): The amplitude of the noise to be added (only used if aug_type is 'noise').
-        - shift_steps (float): The number of steps to shift the pitch (only used if aug_type is 'pitch').
-        - stretch_rate (float): The factor by which to stretch the time (only used if aug_type is 'stretch').
+        - noise_level (float) (optional): The amplitude of the noise to be added (only used if aug_type is 'noise').
+        - stretch_rate (float) (optional): The factor by which to stretch the time (only used if aug_type is 'stretch').
 
         Returns:
         - Tuple containing the augmented vowel dataset and augmented phrase dataset.
@@ -133,13 +127,13 @@ class DataAugmentation:
             aug_phrase_audio_data = DataAugmentation._check_fix_length(aug_phrase_audio_data, phrase_original_length)
             
             # Add the new entry to the augmented datasets
-            DataAugmentation._add_entry_dataframe(aug_vowel_dataset, vowel_entry['speaker_id'], aug_vowel_audio_path, aug_vowel_audio_data, vowel_sample_rate)
-            DataAugmentation._add_entry_dataframe(aug_phrase_dataset, phrase_entry['speaker_id'], aug_phrase_audio_path, aug_phrase_audio_data, phrase_sample_rate)
+            aug_vowel_dataset = DataAugmentation._add_entry_dataframe(aug_vowel_dataset, vowel_entry['speaker_id'], aug_vowel_audio_path, aug_vowel_audio_data, vowel_sample_rate)
+            aug_phrase_dataset = DataAugmentation._add_entry_dataframe(aug_phrase_dataset, phrase_entry['speaker_id'], aug_phrase_audio_path, aug_phrase_audio_data, phrase_sample_rate)
 
         return aug_vowel_dataset, aug_phrase_dataset
     
     @staticmethod
-    def random_augmentation(vowel_dataset, phrase_dataset, vowel_stats, phrase_stats, n_augmentations):
+    def random_augmentation(vowel_dataset, phrase_dataset, n_augmentations):
         """
         Performs random augmentations on the datasets.
 
@@ -156,8 +150,8 @@ class DataAugmentation:
         augmentation_types = ['noise', 'stretch']
         noise_level_range = (0.02, 0.08)
         stretch_rate_range = (0.8, 1.2)
-        aug_vowel_datasets = []
-        aug_phrase_datasets = []
+        combined_aug_vowel_dataset = pd.DataFrame()
+        combined_aug_phrase_dataset = pd.DataFrame()
 
         for _ in range(n_augmentations):
             aug_type = random.choice(augmentation_types)
@@ -166,8 +160,6 @@ class DataAugmentation:
                 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.augment_audio(
                     vowel_dataset=vowel_dataset,
                     phrase_dataset=phrase_dataset,
-                    vowel_stats=vowel_stats,
-                    phrase_stats=phrase_stats,
                     aug_type=aug_type,
                     n_audios=1,
                     noise_level=noise_level
@@ -177,20 +169,14 @@ class DataAugmentation:
                 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.augment_audio(
                     vowel_dataset=vowel_dataset,
                     phrase_dataset=phrase_dataset,
-                    vowel_stats=vowel_stats,
-                    phrase_stats=phrase_stats,
                     aug_type=aug_type,
                     n_audios=1,
                     stretch_rate=stretch_rate
                 )
+            combined_aug_vowel_dataset = pd.concat([combined_aug_vowel_dataset, aug_vowel_dataset], ignore_index=True)
+            combined_aug_phrase_dataset = pd.concat([combined_aug_phrase_dataset, aug_phrase_dataset], ignore_index=True)
 
-            aug_vowel_datasets.append(aug_vowel_dataset)
-            aug_phrase_datasets.append(aug_phrase_dataset)
-
-        combined_vowel_dataset = pd.concat(aug_vowel_datasets, ignore_index=True)
-        combined_phrase_dataset = pd.concat(aug_phrase_datasets, ignore_index=True)
-
-        return combined_vowel_dataset, combined_phrase_dataset
+        return combined_aug_vowel_dataset, combined_aug_phrase_dataset
 
     @staticmethod
     def _check_fix_length(audio, original_length):
