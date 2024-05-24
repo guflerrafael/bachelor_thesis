@@ -1,27 +1,32 @@
 import os
-import math
 import pandas as pd
 from pipeline.data_processing import DatasetManager, AudioProcessing
 from pipeline.data_augmentation import DataAugmentation
 from pipeline.feature_extraction import FeatureDatasetManager
+from utilities.utilities import extract_zip, round_up_to_half
+
+BASE_DATA_DIR = 'data'
 
 # ------------- DATA PROCESSING -----------------------------------------------------
 
+# Extract wav files from zip file
+extract_zip(os.path.join('data', 'svd_original.zip'), BASE_DATA_DIR)
+
 # Create dataset from folder structure
-dm = DatasetManager('data/svd')
-vowel_dataset, phrase_dataset = dm.create_dataset()
-dm.plot_dataset_distribution(vowel_dataset, os.path.join('data', 'distribution_pathologies.json'), os.path.join('images', 'dataset_distribution.png'))
+dataset_manager = DatasetManager(os.path.join(BASE_DATA_DIR, 'svd'))
+vowel_dataset, phrase_dataset = dataset_manager.create_dataset()
+dataset_manager.plot_dataset_distribution(vowel_dataset, os.path.join('data', 'distribution_pathologies.json'), os.path.join('images', 'dataset_distribution.png'))
 
 # Extract statistics from dataset
-vowel_dataset_stats = dm.analyse_dataset(vowel_dataset)
-phrase_dataset_stats = dm.analyse_dataset(phrase_dataset)
+vowel_dataset_stats = dataset_manager.analyse_dataset(vowel_dataset)
+phrase_dataset_stats = dataset_manager.analyse_dataset(phrase_dataset)
 print('\nVowel dataset stats:\n')
 print(vowel_dataset_stats)
 print('\nPhrase dataset stats:\n')
 print(phrase_dataset_stats)
 
 # Align dataset 
-vowel_dataset, phrase_dataset = dm.align_dataset(vowel_dataset, phrase_dataset)
+vowel_dataset, phrase_dataset = dataset_manager.align_dataset(vowel_dataset, phrase_dataset)
 
 # Resample audios
 target_sample_rate = 16000
@@ -29,19 +34,6 @@ vowel_dataset['audio_data'] = AudioProcessing.resample_all_audios(vowel_dataset[
 phrase_dataset['audio_data'] = AudioProcessing.resample_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], target_sample_rate)
 vowel_dataset['sample_rate'] = target_sample_rate
 phrase_dataset['sample_rate'] = target_sample_rate
-
-# Might be moved to utilites class
-def round_up_to_half(number):
-    """
-    Rounds a float up to the nearest multiple of 0.5.
-    
-    Args:
-    number (float): The number to round.
-
-    Returns:
-    float: The number rounded up to the nearest 0.5.
-    """
-    return math.ceil(number * 2) / 2
 
 # Pad audios 
 vowel_dataset_stats = DatasetManager.analyse_dataset(vowel_dataset)
@@ -60,8 +52,8 @@ DatasetManager.save_dataset(vowel_dataset, os.path.join('datasets', 'processed',
 DatasetManager.save_dataset(phrase_dataset, os.path.join('datasets', 'processed', 'phrase_dataset.pkl'))
 
 # Extract statistics from dataset
-vowel_dataset_stats = dm.analyse_dataset(vowel_dataset)
-phrase_dataset_stats = dm.analyse_dataset(phrase_dataset)
+vowel_dataset_stats = dataset_manager.analyse_dataset(vowel_dataset)
+phrase_dataset_stats = dataset_manager.analyse_dataset(phrase_dataset)
 print('\nVowel dataset stats:\n')
 print(vowel_dataset_stats)
 print('\nPhrase dataset stats:\n')
@@ -95,8 +87,6 @@ The augmentation type will be selected by taking turns, ensuring each augmentati
 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.random_augmentation(
     vowel_dataset=vowel_dataset[(vowel_dataset['sex'] == 'male') & (vowel_dataset['diagnosis'] == 'health')],
     phrase_dataset=phrase_dataset[(vowel_dataset['sex'] == 'male') & (vowel_dataset['diagnosis'] == 'health')],
-    vowel_stats=vowel_dataset_stats,
-    phrase_stats=phrase_dataset_stats,
     n_augmentations=498
 )
 vowel_dataset = pd.concat([vowel_dataset, aug_vowel_dataset], ignore_index=True)
@@ -107,8 +97,6 @@ phrase_dataset = pd.concat([phrase_dataset, aug_phrase_dataset], ignore_index=Tr
 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.random_augmentation(
     vowel_dataset=vowel_dataset[(vowel_dataset['sex'] == 'female') & (vowel_dataset['diagnosis'] == 'health')],
     phrase_dataset=phrase_dataset[(vowel_dataset['sex'] == 'female') & (vowel_dataset['diagnosis'] == 'health')],
-    vowel_stats=vowel_dataset_stats,
-    phrase_stats=phrase_dataset_stats,
     n_augmentations=368
 )
 vowel_dataset = pd.concat([vowel_dataset, aug_vowel_dataset], ignore_index=True)
@@ -119,9 +107,7 @@ phrase_dataset = pd.concat([phrase_dataset, aug_phrase_dataset], ignore_index=Tr
 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.random_augmentation(
     vowel_dataset=vowel_dataset[(vowel_dataset['sex'] == 'male') & (vowel_dataset['diagnosis'] == 'path')],
     phrase_dataset=phrase_dataset[(vowel_dataset['sex'] == 'male') & (vowel_dataset['diagnosis'] == 'path')],
-    vowel_stats=vowel_dataset_stats,
-    phrase_stats=phrase_dataset_stats,
-    n_augmentations=113
+    n_augmentations=123
 )
 vowel_dataset = pd.concat([vowel_dataset, aug_vowel_dataset], ignore_index=True)
 phrase_dataset = pd.concat([phrase_dataset, aug_phrase_dataset], ignore_index=True)
@@ -131,8 +117,6 @@ phrase_dataset = pd.concat([phrase_dataset, aug_phrase_dataset], ignore_index=Tr
 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.random_augmentation(
     vowel_dataset=vowel_dataset[(vowel_dataset['sex'] == 'female') & (vowel_dataset['diagnosis'] == 'path')],
     phrase_dataset=phrase_dataset[(vowel_dataset['sex'] == 'female') & (vowel_dataset['diagnosis'] == 'path')],
-    vowel_stats=vowel_dataset_stats,
-    phrase_stats=phrase_dataset_stats,
     n_augmentations=24
 )
 vowel_dataset = pd.concat([vowel_dataset, aug_vowel_dataset], ignore_index=True)
@@ -143,8 +127,8 @@ DatasetManager.save_dataset(vowel_dataset, os.path.join('datasets', 'augmented',
 DatasetManager.save_dataset(phrase_dataset, os.path.join('datasets', 'augmented', 'phrase_dataset.pkl'))
 
 # Extract statistics from dataset
-vowel_dataset_stats = dm.analyse_dataset(vowel_dataset)
-phrase_dataset_stats = dm.analyse_dataset(phrase_dataset)
+vowel_dataset_stats = dataset_manager.analyse_dataset(vowel_dataset)
+phrase_dataset_stats = dataset_manager.analyse_dataset(phrase_dataset)
 print('\nVowel dataset stats:\n')
 print(vowel_dataset_stats)
 print('\nPhrase dataset stats:\n')
