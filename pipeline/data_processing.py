@@ -87,18 +87,13 @@ class DatasetManager(DataProcessing):
         durations = dataset.apply(
             lambda row: AudioProcessing.calculate_audio_duration(row['audio_data'], row['sample_rate']), axis=1
         )
-        pitches = dataset.apply(
-            lambda row: AudioProcessing.calculate_pitch(row['audio_data'], row['sample_rate']), axis=1
-        )
         stats_dataset = pd.DataFrame({
             'duration': durations,
-            'pitch': pitches,
             'diagnosis': dataset['diagnosis'],
             'sex': dataset['sex']
         })
         stats = stats_dataset.groupby(['diagnosis', 'sex']).agg({
             'duration': ['mean', 'std', 'max', 'count'],
-            'pitch': ['mean', 'std', 'max']
         })
         stats.columns = ['_'.join(col).strip() for col in stats.columns.values]
         stats = stats.rename(columns={
@@ -106,46 +101,10 @@ class DatasetManager(DataProcessing):
             'duration_std': 'std_duration',
             'duration_max': 'max_duration',
             'duration_count': 'sample_count',
-            'pitch_mean': 'mean_pitch',
-            'pitch_std': 'std_pitch',
-            'pitch_max': 'max_pitch'
         })
         stats = stats.reset_index()
 
         return stats
-        '''
-        '''
-        dataset['duration'] = dataset.apply(
-            lambda row: AudioProcessing.calculate_audio_duration(row['audio_data'], row['sample_rate']), axis=1
-        )
-        dataset['pitch'] = dataset.apply(
-            lambda row: AudioProcessing.calculate_pitch(row['audio_data'], row['sample_rate']), axis=1
-        )
-
-        stats_dataset = pd.DataFrame({
-            'duration': dataset['duration'],
-            'pitch': dataset['pitch'],
-            'diagnosis': dataset['diagnosis'],
-            'sex': dataset['sex']
-        })
-        stats = stats_dataset.groupby(['diagnosis', 'sex']).agg({
-            'duration': ['mean', 'std', 'max', 'count'],
-            'pitch': ['mean', 'std', 'max']
-        })
-        stats.columns = ['_'.join(col).strip() for col in stats.columns.values]
-        stats = stats.rename(columns={
-            'duration_mean': 'mean_duration',
-            'duration_std': 'std_duration',
-            'duration_max': 'max_duration',
-            'duration_count': 'sample_count',
-            'pitch_mean': 'mean_pitch',
-            'pitch_std': 'std_pitch',
-            'pitch_max': 'max_pitch'
-        })
-        stats = stats.reset_index()
-
-        return stats
-
         
     @staticmethod
     def plot_dataset_distribution(dataset, distribution_pathologies_path, plot_save_path):
