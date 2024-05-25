@@ -148,15 +148,16 @@ class DataAugmentation:
         - Augmented vowel and phrase datasets.
         """
         augmentation_types = ['noise', 'stretch']
-        noise_level_range = (0.02, 0.08)
-        stretch_rate_range = (0.8, 1.2)
+        noise_levels = np.round(np.arange(0.02, 0.045, 0.005), 3)
+        stretch_rates = np.round(np.arange(0.8, 1.25, 0.05), 2)
+        stretch_rates = stretch_rates[stretch_rates != 1.0]
         combined_aug_vowel_dataset = pd.DataFrame()
         combined_aug_phrase_dataset = pd.DataFrame()
 
         for _ in range(n_augmentations):
             aug_type = random.choice(augmentation_types)
             if aug_type == 'noise':
-                noise_level = random.uniform(*noise_level_range)
+                noise_level = random.choice(noise_levels)
                 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.augment_audio(
                     vowel_dataset=vowel_dataset,
                     phrase_dataset=phrase_dataset,
@@ -165,7 +166,7 @@ class DataAugmentation:
                     noise_level=noise_level
                 )
             elif aug_type == 'stretch':
-                stretch_rate = random.uniform(*stretch_rate_range)
+                stretch_rate = random.choice(stretch_rates)
                 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.augment_audio(
                     vowel_dataset=vowel_dataset,
                     phrase_dataset=phrase_dataset,

@@ -15,8 +15,6 @@ DEVICE = 'mps'
 
 class FeatureDatasetManager():
     def __init__(self):
-        # self._sample_rate = 16000
-        # self._device = 'mps'
         pass
     '''
     def set_sample_rate(self, sample_rate):
@@ -27,7 +25,7 @@ class FeatureDatasetManager():
     '''
 
     @staticmethod
-    def create_dataset(vowel_dataset, phrase_dataset, padsize_mfcc, padsize_wav2vec2, n_mfcc=13, n_harmonics_f0=5):
+    def create_dataset(vowel_dataset, phrase_dataset, vowel_padsize_mfcc, phrase_padsize_mfcc, padsize_wav2vec2, n_mfcc=13):
         """
         Creates two new DataFrames containing the features extracted from the audio data.
 
@@ -35,13 +33,13 @@ class FeatureDatasetManager():
         - vowel_feature_dataset: The vowel featureset.
         - phrase_feature_dataset: The phrase featureset.
         """
-        vowel_feature_dataset = FeatureDatasetManager._create_vowel_feature_dataset(vowel_dataset, n_mfcc=n_mfcc, padsize_mfcc=padsize_mfcc, n_harmonics_f0=n_harmonics_f0)
-        phrase_feature_dataset = FeatureDatasetManager._create_phrase_feature_dataset(phrase_dataset, n_mfcc=n_mfcc, padsize_mfcc=padsize_mfcc, padsize_wav2vec2=padsize_wav2vec2)
+        vowel_feature_dataset = FeatureDatasetManager._create_vowel_feature_dataset(vowel_dataset, n_mfcc=n_mfcc, padsize_mfcc=vowel_padsize_mfcc)
+        phrase_feature_dataset = FeatureDatasetManager._create_phrase_feature_dataset(phrase_dataset, n_mfcc=n_mfcc, padsize_mfcc=phrase_padsize_mfcc, padsize_wav2vec2=padsize_wav2vec2)
 
         return vowel_feature_dataset, phrase_feature_dataset
 
     @staticmethod
-    def _create_vowel_feature_dataset(vowel_dataset, n_mfcc, padsize_mfcc, n_harmonics_f0):
+    def _create_vowel_feature_dataset(vowel_dataset, n_mfcc, padsize_mfcc):
         """
         Creates a new DataFrame containing MFCC, f0, jitter, shimmer and sex features.
         This feature dataset comprises of features to be interpreted and trained on by a CNN-like algorithm.
@@ -123,6 +121,7 @@ class AudioFeatureExtraction:
         Returns:
         - padded_mfcc: The padded MFCC features.
         '''
+        # MFCC uses 20 ms as window size.
         mfcc = librosa.feature.mfcc(y=audio, sr=SAMPLE_RATE, n_mfcc=n_mfcc)
         padded_mfcc = librosa.util.pad_center(mfcc, size=padsize, axis=1)
 
@@ -139,6 +138,7 @@ class AudioFeatureExtraction:
         Returns:
         - padded_wav2vec2_features: The padded wav2vec features.
         '''
+        # Wav2Vec2 uses 20 ms as window size.
         if AudioFeatureExtraction.wav2vec2_model is None:
             AudioFeatureExtraction.wav2vec2_model = torchaudio.pipelines.WAV2VEC2_BASE.get_model().to(DEVICE)
 

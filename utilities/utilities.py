@@ -31,14 +31,14 @@ def extract_zip(zip_file_path, extract_to_dir):
         shutil.rmtree(macosx_path)
         print(f"Removed _MACOSX directory at {macosx_path}")
 
-def round_up_to_half(number):
+def round_to_tenth(number):
     """
-    Rounds a float up to the nearest multiple of 0.5.
+    Rounds a float up to the nearest multiple of 0.1.
     
     Parameters:
     number (float): The number to round.
 
     Returns:
-    float: The number rounded up to the nearest 0.5.
+    float: The number rounded up to the nearest 0.1.
     """
-    return math.ceil(number * 2) / 2
+    return math.ceil(number * 10) / 10

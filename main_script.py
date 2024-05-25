@@ -3,9 +3,10 @@ import pandas as pd
 from pipeline.data_processing import DatasetManager, AudioProcessing
 from pipeline.data_augmentation import DataAugmentation
 from pipeline.feature_extraction import FeatureDatasetManager
-from utilities.utilities import extract_zip, round_up_to_half
+from utilities.utilities import extract_zip, round_to_tenth
 
 BASE_DATA_DIR = 'data'
+SAMPLE_RATE = 16000
 
 # ------------- DATA PROCESSING -----------------------------------------------------
 
@@ -29,17 +30,16 @@ print(phrase_dataset_stats)
 vowel_dataset, phrase_dataset = dataset_manager.align_dataset(vowel_dataset, phrase_dataset)
 
 # Resample audios
-target_sample_rate = 16000
-vowel_dataset['audio_data'] = AudioProcessing.resample_all_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], target_sample_rate)
-phrase_dataset['audio_data'] = AudioProcessing.resample_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], target_sample_rate)
-vowel_dataset['sample_rate'] = target_sample_rate
-phrase_dataset['sample_rate'] = target_sample_rate
+vowel_dataset['audio_data'] = AudioProcessing.resample_all_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], SAMPLE_RATE)
+phrase_dataset['audio_data'] = AudioProcessing.resample_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], SAMPLE_RATE)
+vowel_dataset['sample_rate'] = SAMPLE_RATE
+phrase_dataset['sample_rate'] = SAMPLE_RATE
 
 # Pad audios 
 vowel_dataset_stats = DatasetManager.analyse_dataset(vowel_dataset)
 phrase_dataset_stats = DatasetManager.analyse_dataset(phrase_dataset)
-vowel_target_duration = round_up_to_half(max(vowel_dataset_stats['max_duration']))
-phrase_target_duration = round_up_to_half(max(phrase_dataset_stats['max_duration']))
+vowel_target_duration = round_to_tenth(max(vowel_dataset_stats['max_duration']))
+phrase_target_duration = round_to_tenth(max(phrase_dataset_stats['max_duration']))
 vowel_dataset['audio_data'] = AudioProcessing.pad_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], vowel_target_duration)
 phrase_dataset['audio_data'] = AudioProcessing.pad_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], phrase_target_duration)
 
@@ -136,13 +136,23 @@ print(phrase_dataset_stats)
 
 # ------------- FEATURE EXTRACTION -----------------------------------------------------
 
-# TODO: Calculate padsize 
+# Wav2Vec2 uses 20 ms as window size.
+# Also MFCC uses 20 ms, so this is per default ensured.
 
+# Calculate padsize 
+wav2vec2_window_size = 20
+mfcc_window_size = 20
+vowel_padsize_mfcc = round((vowel_dataset_stats['mean_duration'][0] * 1000) / mfcc_window_size) # Should be 225
+phrase_padsize_mfcc = round((phrase_dataset_stats['mean_duration'][0] * 1000) / mfcc_window_size) # Should be 325
+padsize_wav2vec2 = round((phrase_dataset_stats['mean_duration'][0] * 1000) / wav2vec2_window_size) # Should be 325
+
+# Extract features
 vowel_feature_dataset, phrase_feature_dataset = FeatureDatasetManager.create_dataset(
     vowel_dataset=vowel_dataset,
     phrase_dataset=phrase_dataset,
-    padsize_mfcc=350,
-    padsize_wav2vec2=350
+    vowel_padsize_mfcc=vowel_padsize_mfcc, 
+    phrase_padsize_mfcc=phrase_padsize_mfcc,
+    padsize_wav2vec2=padsize_wav2vec2
 )
 
 # Save dataset
