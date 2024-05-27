@@ -28,7 +28,7 @@ class AudioClassificationLSTM():
         print(missing_values)
 
     @staticmethod
-    def _extract_lstm_features(dataset):
+    def _extract_lstm_features(dataset, test_size=0.2, random_state=42):
         """
         Extract MFCC features and labels for LSTM classification.
 
@@ -44,7 +44,9 @@ class AudioClassificationLSTM():
         X = np.array([x for x in X])
         y = np.array([x for x in y])
 
-        return X, y
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+
+        return X_train, X_test, y_train, y_test
 
     @staticmethod
     def train_lstm_model(dataset, test_size=0.2, random_state=42, epochs=50, batch_size=32):
@@ -58,15 +60,16 @@ class AudioClassificationLSTM():
         - epochs (int): Number of epochs to train the model.
         - batch_size (int): Number of samples per gradient update.
         """
-        X, y = AudioClassificationLSTM._extract_lstm_features(dataset)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+        X_train, X_test, y_train, y_test = AudioClassificationLSTM._extract_lstm_features(dataset, test_size, random_state)
 
         model = Sequential()
         model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))
-        model.add(Bidirectional(LSTM(64, return_sequences=True)))
+        model.add(LSTM(64, return_sequences=True))
         model.add(Dropout(0.5))
-        model.add(Bidirectional(LSTM(64)))
+        model.add(LSTM(64))
         model.add(Dropout(0.5))
+        model.add(Dense(32, activation='relu'))
+        model.add(Dense(16, activation='relu'))
         model.add(Dense(2, activation='softmax'))
 
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
