@@ -75,7 +75,7 @@ class AudioClassificationWav2Vec():
         print(missing_values)
 
     @staticmethod
-    def _extract_wav2vec_features(dataset):
+    def _extract_wav2vec_features(dataset, test_size=0.2, random_state=42):
         """
         Extract wav2vec features and labels for LSTM classification.
 
@@ -87,11 +87,12 @@ class AudioClassificationWav2Vec():
         """
         X = dataset['wav2vec2'].to_list()
         y = dataset['diagnosis'].to_list()
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
-        return X, y
+        return X_train, X_test, y_train, y_test
 
     @staticmethod
-    def train_lstm_model(dataset, test_size=0.2, random_state=42, epochs=50, batch_size=32):
+    def train_lstm_model(dataset, test_size=0.2, random_state=42, epochs=50, batch_size=32, visualize_performance=True):
         """
         Train an LSTM model using the provided dataset, evaluate its performance, and visualize the results.
 
@@ -102,11 +103,7 @@ class AudioClassificationWav2Vec():
         - epochs (int): Number of epochs to train the model.
         - batch_size (int): Number of samples per gradient update.
         """
-        # AudioClassificationWav2Vec.check_array_shapes(dataset)
-        AudioClassificationWav2Vec._check_missing_values(dataset)
-        X, y = AudioClassificationWav2Vec._extract_wav2vec_features(dataset)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
-
+        X_train, X_test, y_train, y_test = AudioClassificationWav2Vec._extract_wav2vec_features(dataset, test_size, random_state)
         train_generator = DataGenerator(X_train, y_train, batch_size=batch_size)
         test_generator = DataGenerator(X_test, y_test, batch_size=batch_size, shuffle=False)
 
@@ -116,24 +113,20 @@ class AudioClassificationWav2Vec():
         model.add(Dropout(0.5))
         model.add(Bidirectional(LSTM(64)))
         model.add(Dropout(0.5))
+        model.add(Dense(16, activation='relu'))
         model.add(Dense(2, activation='softmax'))
-
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-
         early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.0001)
 
         history = model.fit(train_generator, epochs=epochs, validation_data=test_generator,
                         callbacks=[early_stopping, reduce_lr])
-
         y_pred = AudioClassificationWav2Vec.predict(model, test_generator, len(test_generator))
-        y_pred_classes = np.argmax(y_pred, axis=1)
-        y_test_classes = np.argmax(np.array([to_categorical(y, num_classes=2) for y in y_test]), axis=1)
-        accuracy = accuracy_score(y_test_classes, y_pred_classes)
-        print(f'Model Accuracy: {accuracy * 100:.2f}%')
-        AudioClassificationWav2Vec.visualize_performance(y_test_classes, y_pred_classes)
 
-        return model
+        if visualize_performance:
+            AudioClassificationWav2Vec.visualize_performance(y_test, y_pred)
+
+        return model, history
 
     @staticmethod
     def predict(model, generator, steps):
@@ -167,8 +160,15 @@ class AudioClassificationWav2Vec():
         y_test (np.ndarray): The true labels.
         y_pred (np.ndarray): The predicted labels.
         """
+        y_pred_classes = np.argmax(y_pred, axis=1)
+        y_test_classes = np.argmax(np.array([to_categorical(y, num_classes=2) for y in y_test]), axis=1)
+
+        # Accuracy
+        accuracy = accuracy_score(y_test_classes, y_pred_classes)
+        print(f'Model Accuracy: {accuracy * 100:.2f}%')
+
         # Confusion Matrix
-        cm = confusion_matrix(y_test, y_pred)
+        cm = confusion_matrix(y_test_classes, y_pred_classes)
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0, 1], yticklabels=[0, 1])
         plt.xlabel('Predicted')
@@ -177,7 +177,7 @@ class AudioClassificationWav2Vec():
         plt.savefig(os.path.join('images', 'phrase_wav2vec_lstm_model.png'))
 
         # Classification Report
-        report = classification_report(y_test, y_pred, target_names=['Class 0', 'Class 1'])
+        report = classification_report(y_test_classes, y_pred_classes, target_names=['Class 0', 'Class 1'])
         print("Classification Report:")
         print(report)
 

@@ -6,8 +6,9 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, LSTM, Dense, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical, plot_model, model_to_dot
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from pydot import graph_from_dot_data
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -49,7 +50,7 @@ class AudioClassificationLSTM():
         return X_train, X_test, y_train, y_test
 
     @staticmethod
-    def train_lstm_model(dataset, test_size=0.2, random_state=42, epochs=50, batch_size=32):
+    def train_lstm_model(dataset, test_size=0.2, random_state=42, epochs=50, batch_size=32, visualize_performance=True):
         """
         Train an LSTM model using the provided dataset, evaluate its performance, and visualize the results.
 
@@ -64,30 +65,26 @@ class AudioClassificationLSTM():
 
         model = Sequential()
         model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))
-        model.add(LSTM(64, return_sequences=True))
+        model.add(Bidirectional(LSTM(64, return_sequences=True)))
         model.add(Dropout(0.5))
-        model.add(LSTM(64))
+        model.add(Bidirectional(LSTM(64)))
         model.add(Dropout(0.5))
-        model.add(Dense(32, activation='relu'))
         model.add(Dense(16, activation='relu'))
         model.add(Dense(2, activation='softmax'))
-
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-
         early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.0001)
-
+        
+        # plot_model(model, to_file=os.path.join('images', 'LSTM_summary.png'), show_shapes=True, show_layer_names=False)
+        
         history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2,
                             callbacks=[early_stopping, reduce_lr])
-
         y_pred = model.predict(X_test)
-        y_pred_classes = np.argmax(y_pred, axis=1)
-        y_test_classes = np.argmax(y_test, axis=1)
-        accuracy = accuracy_score(y_test_classes, y_pred_classes)
-        print(f'Model Accuracy: {accuracy * 100:.2f}%')
-        AudioClassificationLSTM.visualize_performance(y_test_classes, y_pred_classes)
+       
+        if visualize_performance: 
+            AudioClassificationLSTM.visualize_performance(y_test, y_pred)
 
-        return model
+        return model, history
 
     @staticmethod
     def predict(model, features):
@@ -120,17 +117,24 @@ class AudioClassificationLSTM():
         y_test (np.ndarray): The true labels.
         y_pred (np.ndarray): The predicted labels.
         """
+        y_pred_classes = np.argmax(y_pred, axis=1)
+        y_test_classes = np.argmax(y_test, axis=1)
+
+        # Accuracy
+        accuracy = accuracy_score(y_test_classes, y_pred_classes)
+        print(f'Model Accuracy: {accuracy * 100:.2f}%')
+
         # Confusion Matrix
-        cm = confusion_matrix(y_test, y_pred)
+        cm = confusion_matrix(y_test_classes, y_pred_classes)
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0, 1], yticklabels=[0, 1])
         plt.xlabel('Predicted')
         plt.ylabel('Actual')
         plt.title('Confusion Matrix')
-        plt.savefig(os.path.join('images', 'phrase_mfcc_lstm_model.png'))
+        plt.savefig(os.path.join('images', 'phrase_mfcc_lstm_model_confusion.png'))
 
         # Classification Report
-        report = classification_report(y_test, y_pred, target_names=['Class 0', 'Class 1'])
+        report = classification_report(y_test_classes, y_pred_classes, target_names=['Class 0', 'Class 1'])
         print("Classification Report:")
         print(report)
 

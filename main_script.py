@@ -1,9 +1,14 @@
 import os
 import pandas as pd
+import joblib
+
 from pipeline.data_processing import DatasetManager, AudioProcessing
 from pipeline.data_augmentation import DataAugmentation
 from pipeline.feature_extraction import FeatureDatasetManager
 from utilities.utilities import extract_zip, round_to_tenth
+from pipeline.classification.SVM import AudioClassificationSVM
+from pipeline.classification.LSTM_mfcc import AudioClassificationLSTM
+from pipeline.classification.LSTM_wav2vec import AudioClassificationWav2Vec
 
 BASE_DATA_DIR = 'data'
 SAMPLE_RATE = 16000
@@ -29,7 +34,7 @@ print(phrase_dataset_stats)
 # Align dataset 
 vowel_dataset, phrase_dataset = dataset_manager.align_dataset(vowel_dataset, phrase_dataset)
 
-# Resample audios
+# Resample audiosTo 
 vowel_dataset['audio_data'] = AudioProcessing.resample_all_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], SAMPLE_RATE)
 phrase_dataset['audio_data'] = AudioProcessing.resample_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], SAMPLE_RATE)
 vowel_dataset['sample_rate'] = SAMPLE_RATE
@@ -112,7 +117,7 @@ aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.random_augmentation(
 vowel_dataset = pd.concat([vowel_dataset, aug_vowel_dataset], ignore_index=True)
 phrase_dataset = pd.concat([phrase_dataset, aug_phrase_dataset], ignore_index=True)
 
-## Path male 
+## Path female 
 # 24 samples to augment
 aug_vowel_dataset, aug_phrase_dataset = DataAugmentation.random_augmentation(
     vowel_dataset=vowel_dataset[(vowel_dataset['sex'] == 'female') & (vowel_dataset['diagnosis'] == 'path')],
@@ -134,17 +139,38 @@ print(vowel_dataset_stats)
 print('\nPhrase dataset stats:\n')
 print(phrase_dataset_stats)
 
+# Pad audios 
+# vowel_dataset_stats = DatasetManager.analyse_dataset(vowel_dataset)
+# phrase_dataset_stats = DatasetManager.analyse_dataset(phrase_dataset)
+# vowel_target_duration = round_to_tenth(max(vowel_dataset_stats['max_duration']))
+# phrase_target_duration = round_to_tenth(max(phrase_dataset_stats['max_duration']))
+# vowel_dataset['audio_data'] = AudioProcessing.pad_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], vowel_target_duration)
+# phrase_dataset['audio_data'] = AudioProcessing.pad_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], phrase_target_duration)
+# print(vowel_dataset)
+# print(phrase_dataset)
+
+# # Save padded audios
+# DatasetManager.save_all_audios(vowel_dataset['audio_data'], vowel_dataset['sample_rate'], vowel_dataset['audio_path'])
+# DatasetManager.save_all_audios(phrase_dataset['audio_data'], phrase_dataset['sample_rate'], phrase_dataset['audio_path'])
+
+# # Save dataset
+# DatasetManager.save_dataset(vowel_dataset, os.path.join('datasets', 'augmented', 'vowel_dataset_aug_first.pkl'))
+# DatasetManager.save_dataset(phrase_dataset, os.path.join('datasets', 'augmented', 'phrase_dataset_aug_first.pkl'))
+
+
 # ------------- FEATURE EXTRACTION -----------------------------------------------------
 
 # Wav2Vec2 uses 20 ms as window size.
 # Also MFCC uses 20 ms, so this is per default ensured.
+# vowel_dataset_stats = dataset_manager.analyse_dataset(vowel_dataset)
+# phrase_dataset_stats = dataset_manager.analyse_dataset(phrase_dataset)
 
 # Calculate padsize 
 wav2vec2_window_size = 20
 mfcc_window_size = 20
-vowel_padsize_mfcc = round((vowel_dataset_stats['mean_duration'][0] * 1000) / mfcc_window_size) # Should be 225
-phrase_padsize_mfcc = round((phrase_dataset_stats['mean_duration'][0] * 1000) / mfcc_window_size) # Should be 325
-padsize_wav2vec2 = round((phrase_dataset_stats['mean_duration'][0] * 1000) / wav2vec2_window_size) # Should be 325
+vowel_padsize_mfcc = round((vowel_dataset_stats['mean_duration'][0] * 1000) / mfcc_window_size) 
+phrase_padsize_mfcc = round((phrase_dataset_stats['mean_duration'][0] * 1000) / mfcc_window_size) 
+padsize_wav2vec2 = round((phrase_dataset_stats['mean_duration'][0] * 1000) / wav2vec2_window_size) 
 
 # Extract features
 vowel_feature_dataset, phrase_feature_dataset = FeatureDatasetManager.create_dataset(
@@ -162,5 +188,21 @@ DatasetManager.save_dataset(phrase_feature_dataset, os.path.join('datasets', 'fe
 print(vowel_feature_dataset)
 print(phrase_feature_dataset)
 
-# ------------- CLASSIFICATION -----------------------------------------------------
+# ------------- INDIVIDUAL MODEL TRAINING -----------------------------------------------------
 
+# vowel_feature_dataset = pd.read_pickle(os.path.join('datasets', 'feature_extracted', 'vowel_dataset.pkl'))
+# phrase_feature_dataset = pd.read_pickle(os.path.join('datasets', 'feature_extracted', 'phrase_dataset.pkl'))
+
+# Train the models
+# vowel_svm_model = AudioClassification.train_svm_model(vowel_feature_dataset)
+# vowel_mfcc_lstm_model = AudioClassificationLSTM.train_lstm_model(vowel_feature_dataset)
+# phrase_mfcc_lstm_model = AudioClassificationLSTM.train_lstm_model(phrase_feature_dataset)
+# phrase_wav2vec_lstm_model = AudioClassificationWav2Vec.train_lstm_model(phrase_feature_dataset)
+
+# Save the models
+# joblib.dump(vowel_svm_model, os.path.join('models', 'vowel_svm_model.joblib'))
+# vowel_mfcc_lstm_model.save(os.path.join('models', 'vowel_mfcc_lstm_model.h5'))
+# phrase_mfcc_lstm_model.save(os.path.join('models', 'phrase_mfcc_lstm_model.h5'))
+# phrase_wav2vec_lstm_model.save(os.path.join('models', 'phrase_wav2vec_lstm_model.h5'))
+
+# ------------- MODEL PERFORMANCE METRICS -----------------------------------------------------

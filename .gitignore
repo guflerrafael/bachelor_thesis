@@ -176,5 +176,6 @@ data/svd_original.zip
 
 ## Ignore cached pipeline classes
 pipeline/__pycache__
+pipeline/classification/__pycache__
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,macos,visualstudiocode
