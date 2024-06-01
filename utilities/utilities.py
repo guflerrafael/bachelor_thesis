@@ -1,18 +1,25 @@
+"""
+In this utility module, functions that are potientially useful in multiple scripts are defined.
+While the functions are not directly related to the main functionality of the project, 
+they are used to simplify the code and make it more readable.
+"""
+
 import os
 import zipfile
 import shutil
 import math
 
-def extract_zip(zip_file_path, extract_to_dir):
+def extract_zip(zip_file_path: str, extract_to_dir: str):
     """
-    Extracts the contents of a ZIP file to a specified directory. If the specified directory already exists, it will be overwritten.
+    Extracts the contents of a ZIP file to a specified directory. 
+    If the specified directory already exists, it will be overwritten.
 
     Parameters:
-        zip_file_path (str): Path to the ZIP file.
-        extract_to_dir (str): Directory where contents will be extracted.
+    - zip_file_path (str): Path to the ZIP file.
+    - extract_to_dir (str): Directory where contents will be extracted.
 
     Returns:
-        None: Prints status messages during extraction.
+    - None: Prints status messages during extraction.
     """
     if not os.path.exists(zip_file_path):
         print(f"Error: The file {zip_file_path} does not exist.")
@@ -31,14 +38,14 @@ def extract_zip(zip_file_path, extract_to_dir):
         shutil.rmtree(macosx_path)
         print(f"Removed _MACOSX directory at {macosx_path}")
 
-def round_to_tenth(number):
+def round_to_tenth(number: float):
     """
     Rounds a float up to the nearest multiple of 0.1.
     
     Parameters:
-    number (float): The number to round.
+    - number (float): The number to round.
 
     Returns:
-    float: The number rounded up to the nearest 0.1.
+    - float: The number rounded up to the nearest 0.1.
     """
     return math.ceil(number * 10) / 10

@@ -1,16 +1,19 @@
-import pandas as pd
-import librosa
 import os
-import matplotlib.pyplot as plt
+import librosa
 import shutil
-import numpy as np
 import json
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import soundfile as sf
+
+from typing import List, Tuple, Set
 from scipy.signal import butter, lfilter
 from matplotlib.patches import Patch
 
 class DataProcessing:
-    def __init__(self, base_path):
+    def __init__(self, base_path: str) -> None:
         """
         Initialize the DataProcessing class with a base path for data handling.
 
@@ -20,7 +23,7 @@ class DataProcessing:
         self.base_path = base_path
 
 class DatasetManager(DataProcessing):
-    def __init__(self, base_path):
+    def __init__(self, base_path: str) -> None:
         """
         Initialize the DatasetManager class, setting up categories, sexes, sample types, and datasets.
 
@@ -31,11 +34,21 @@ class DatasetManager(DataProcessing):
         self._categories = ['health', 'path']
         self._sexs = ['male', 'female']
         self._sample_types = ['a_n', 'phrase']
-        self._vowel_dataset = pd.DataFrame(columns=['speaker_id', 'audio_path', 'audio_data', 'sample_rate', 'sex', 'diagnosis'])
-        self._phrase_dataset = pd.DataFrame(columns=['speaker_id', 'audio_path', 'audio_data', 'sample_rate', 'sex', 'diagnosis'])
+        self._vowel_dataset = pd.DataFrame(columns=['speaker_id', 
+                                                    'audio_path', 
+                                                    'audio_data', 
+                                                    'sample_rate', 
+                                                    'sex', 
+                                                    'diagnosis'])
+        self._phrase_dataset = pd.DataFrame(columns=['speaker_id', 
+                                                     'audio_path', 
+                                                     'audio_data', 
+                                                     'sample_rate', 
+                                                     'sex', 
+                                                     'diagnosis'])
     
     @staticmethod
-    def load_wav(path):
+    def load_wav(path: str) -> Tuple[np.ndarray, int]:
         """
         Load an audio file from the specified path without changing its sampling rate.
 
@@ -45,10 +58,10 @@ class DatasetManager(DataProcessing):
         Returns:
         - Tuple containing audio time series and sampling rate as provided by librosa.load.
         """
-        return librosa.load(path, sr=None)  # Load the audio file with its native sampling rate
+        return librosa.load(path, sr=None)
     
     @staticmethod
-    def load_all_wav(directory):
+    def load_all_wav(directory: str) -> List[Tuple[np.ndarray, int]]:
         """
         Loads all `.wav` files from the specified directory.
 
@@ -58,25 +71,26 @@ class DatasetManager(DataProcessing):
         Returns:
         - List of tuples, each containing audio data and sampling rate of a file.
         """
-        return [DatasetManager.load_wav(os.path.join(directory, file)) for file in os.listdir(directory) if file.endswith('.wav')]
+        return [DatasetManager.load_wav(os.path.join(directory, file)) \
+                for file in os.listdir(directory) if file.endswith('.wav')]
         
     @staticmethod
-    def save_all_audios(audios, sample_rates, paths):
+    def save_all_audios(audios: List[np.ndarray], sample_rates: List[int], paths: List[str]) -> None:
         """
         Saves the audios to wav files..
 
         Parameters:
-        - audio (list of ndarray): The audio signals.
-        - sample_rate (list of int): The sample rate of the audios.
-        - original_path (list of str): The path where to save the audio files.
+        - audios (list of ndarray): The audio signals.
+        - sample_rates (list of int): The sample rate of the audios.
+        - paths (list of str): The path where to save the audio files.
         """
         for audio, sample_rate, path in zip(audios, sample_rates, paths):
-            sf.write(path, audio, sample_rate)  # Assuming fixed sample rate for simplicity
+            sf.write(path, audio, sample_rate)
 
     @staticmethod
-    def analyse_dataset(dataset):
+    def analyse_dataset(dataset: pd.DataFrame) -> pd.DataFrame:
         """
-        Analyzes the dataset by calculating various statistics related to audio file durations and pitches.
+        Analyzes the dataset by calculating various statistics related to audio duration.
 
         Parameters:
         - dataset (DataFrame): Pandas dataframe to be analysed.
@@ -85,7 +99,8 @@ class DatasetManager(DataProcessing):
         - A DataFrame containing various statistics about the dataframe.
         """
         durations = dataset.apply(
-            lambda row: AudioProcessing.calculate_audio_duration(row['audio_data'], row['sample_rate']), axis=1
+            lambda row: AudioProcessing.calculate_audio_duration(row['audio_data'], 
+                                                                 row['sample_rate']), axis=1
         )
         stats_dataset = pd.DataFrame({
             'duration': durations,
@@ -107,7 +122,7 @@ class DatasetManager(DataProcessing):
         return stats
         
     @staticmethod
-    def plot_dataset_distribution(dataset, distribution_pathologies_path, plot_save_path):
+    def plot_dataset_distribution(dataset: pd.DataFrame, distribution_pathologies_path: str, plot_save_path: str) -> None:
         """
         Plots a summary of the dataset showing health status and the distribution of pathologies.
 
@@ -117,8 +132,10 @@ class DatasetManager(DataProcessing):
         - plot_save_path (str): Path were the plot will be saved.
         """
         grouped_vowel_dataset = dataset.groupby(['diagnosis', 'sex']).size().unstack(fill_value=0)
-        grouped_vowel_dataset.index = grouped_vowel_dataset.index.map({'health': 'Healthy', 'path': 'Pathological'})
-        grouped_vowel_dataset.columns = grouped_vowel_dataset.columns.map({'female': 'Female', 'male': 'Male'})
+        grouped_vowel_dataset.index = grouped_vowel_dataset.index.map({'health': 'Healthy',
+                                                                        'path': 'Pathological'})
+        grouped_vowel_dataset.columns = grouped_vowel_dataset.columns.map({'female': 'Female', 
+                                                                           'male': 'Male'})
 
         default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
@@ -127,17 +144,24 @@ class DatasetManager(DataProcessing):
         ax1.set_xlabel('Number of Samples')
         ax1.set_ylabel('Diagnosis')
         legend_handles = [
-            Patch(facecolor=default_colors[1], label=f'Male ({grouped_vowel_dataset["Male"].sum()} samples)'),
-            Patch(facecolor=default_colors[0], label=f'Female ({grouped_vowel_dataset["Female"].sum()} samples)')
+            Patch(facecolor=default_colors[1], 
+                  label=f'Male ({grouped_vowel_dataset["Male"].sum()} samples)'),
+            Patch(facecolor=default_colors[0], 
+                  label=f'Female ({grouped_vowel_dataset["Female"].sum()} samples)')
         ]
         ax1.legend(handles=legend_handles, loc='lower right', title=None)
 
         with open(distribution_pathologies_path, 'r') as file:
             distribution_pathologies = json.load(file)
-        distribution_pathologies = dict(sorted(distribution_pathologies.items(), key=lambda x: x[1], reverse=True))
+        distribution_pathologies = dict(sorted(distribution_pathologies.items(), 
+                                               key=lambda x: x[1], 
+                                               reverse=True))
         default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        colors = [default_colors[1] if key == 'Healthy' else default_colors[0] for key in distribution_pathologies.keys()]
-        fig2 = ax2.barh(list(distribution_pathologies.keys()), list(distribution_pathologies.values()), color=colors)
+        colors = [default_colors[1] if key == 'Healthy' else default_colors[0] 
+                  for key in distribution_pathologies.keys()]
+        fig2 = ax2.barh(list(distribution_pathologies.keys()), 
+                        list(distribution_pathologies.values()), 
+                        color=colors)
         ax2.set_title('(b)')
         ax2.set_xlabel('Time / h')
         healthy_hours = distribution_pathologies.get('Healthy', 0)
@@ -147,12 +171,12 @@ class DatasetManager(DataProcessing):
 
         plt.tight_layout()
         plt.savefig(plot_save_path)
-        # plt.show()
 
-    def align_dataset(self, vowel_dataset, phrase_dataset):
+    def align_dataset(self, vowel_dataset: pd.DataFrame, phrase_dataset: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Checks and aligns datasets for missing samples across vowel and phrase types for given category and sex. 
-        This ensures that each speaker included in the dataset has both a vowel and phrase recording.
+        Checks and aligns datasets for missing samples across vowel and phrase types 
+        for given category and sex. This ensures that each speaker included in the dataset 
+        has both a vowel and phrase recording.
 
         Parameters:
         - vowel_dataset (DataFrame): The pandas dataset containing the vowel information.
@@ -164,18 +188,34 @@ class DatasetManager(DataProcessing):
         """
         vowel_speaker_ids = set(vowel_dataset['speaker_id'])
         phrase_speaker_ids = set(phrase_dataset['speaker_id'])
-        missing_vowel_speakers = phrase_speaker_ids - vowel_speaker_ids # Phrase exists but vowel not
-        missing_phrase_speakers = vowel_speaker_ids - phrase_speaker_ids # Vowel exists but phrase not
+        missing_vowel_speakers = phrase_speaker_ids - vowel_speaker_ids
+        missing_phrase_speakers = vowel_speaker_ids - phrase_speaker_ids
 
         if missing_vowel_speakers or missing_phrase_speakers:
             for category in self._categories:
                 for sex in self._sexs:
                     if missing_vowel_speakers:
-                        source_directory = os.path.join(self.base_path, category, sex, self._sample_types[1])
-                        AudioFileManager._move_unmatched_files(self, source_directory, missing_vowel_speakers, category, sex, self._sample_types[1])
+                        source_directory = os.path.join(self.base_path, 
+                                                        category, 
+                                                        sex, 
+                                                        self._sample_types[1])
+                        AudioFileManager._move_unmatched_files(self, 
+                                                               source_directory, 
+                                                               missing_vowel_speakers, 
+                                                               category, 
+                                                               sex, 
+                                                               self._sample_types[1])
                     if missing_phrase_speakers:
-                        source_directory = os.path.join(self.base_path, category, sex, self._sample_types[0])
-                        AudioFileManager._move_unmatched_files(self, source_directory, missing_phrase_speakers, category, sex, self._sample_types[0])
+                        source_directory = os.path.join(self.base_path, 
+                                                        category, 
+                                                        sex, 
+                                                        self._sample_types[0])
+                        AudioFileManager._move_unmatched_files(self, 
+                                                               source_directory, 
+                                                               missing_phrase_speakers, 
+                                                               category, 
+                                                               sex, 
+                                                               self._sample_types[0])
 
             vowel_mask = ~vowel_dataset['speaker_id'].isin(missing_phrase_speakers)
             phrase_mask = ~phrase_dataset['speaker_id'].isin(missing_vowel_speakers)
@@ -186,11 +226,14 @@ class DatasetManager(DataProcessing):
 
         return self._vowel_dataset, self._phrase_dataset
     
-    def create_dataset(self, align_dataset=False):
+    def create_dataset(self, align_dataset: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Creates the two dataframes for vowel and phrase. 
-        Simultaneously, the dataset will be aligned (i.e. missing speaker samples across vowel and phrase will be moved). 
+        Creates the two dataframes for vowel and phrase. If align_dataset 'True',
+        the dataset will be aligned (i.e. missing speaker samples will be moved). 
         
+        Parameters:
+        - align_dataset (bool, optional): If True, the dataset will be aligned.
+
         Returns:
         - _vowel_dataset: Dataframe containing the speaker id, path to the vowel audio, sex of the speaker and the diagnosis. 
         - _phrase_dataset: Dataframe containing the speaker id, path to the phrase audio, sex of the speaker and the diagnosis.
@@ -204,7 +247,6 @@ class DatasetManager(DataProcessing):
                         for file in audio_files:
                             if file.endswith('.wav'):
                                 speaker_id = AudioFileManager.get_speaker_id(file)
-                                # speaker_id = re.search(r"(\d+)-[a-z_]+\.wav", file).group(1) if re.search(r"(\d+)-[a-z_]+\.wav", file) else None
                                 audio_path = os.path.join(path, file)
                                 audio_data, sample_rate = self.load_wav(audio_path)
                                 new_row = pd.DataFrame({
@@ -216,9 +258,13 @@ class DatasetManager(DataProcessing):
                                     'diagnosis': [category]
                                 })
                                 if sample_type == 'a_n':
-                                    self._vowel_dataset = pd.concat([self._vowel_dataset, new_row], ignore_index=True)
+                                    self._vowel_dataset = pd.concat([self._vowel_dataset, 
+                                                                     new_row], 
+                                                                    ignore_index=True)
                                 elif sample_type == 'phrase':
-                                    self._phrase_dataset = pd.concat([self._phrase_dataset, new_row], ignore_index=True)
+                                    self._phrase_dataset = pd.concat([self._phrase_dataset, 
+                                                                      new_row], 
+                                                                     ignore_index=True)
 
         self._vowel_dataset = self._vowel_dataset.sort_values('speaker_id')
         self._phrase_dataset = self._phrase_dataset.sort_values('speaker_id')
@@ -231,10 +277,10 @@ class DatasetManager(DataProcessing):
         return self._vowel_dataset, self._phrase_dataset
     
     @staticmethod
-    def save_dataset(dataset, file_path):
+    def save_dataset(dataset: pd.DataFrame, file_path: str) -> None:
         """
-        Saves the DataFrame to the specified path. The file format specified by the file_path will be used to encode the data.
-        The format can either be '.csv', '.json' or '.pkl'.
+        Saves the DataFrame to the specified path. The file format specified by the file_path
+        will be used to encode the data. The format can either be '.csv', '.json' or '.pkl'.
         
         Parameters:
         - dataset (DataFrame): Dataframe containing the data. 
@@ -243,11 +289,15 @@ class DatasetManager(DataProcessing):
         try:
             if file_path.endswith('.csv'):
                 dataset_copy = dataset.copy()
-                dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
+                dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(
+                    lambda audio_data: json.dumps(audio_data.tolist())
+                )
                 dataset_copy.to_csv(file_path, index=False)
             elif file_path.endswith('.json'):
                 dataset_copy = dataset.copy()
-                dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(lambda audio_data: json.dumps(audio_data.tolist()))
+                dataset_copy['audio_data'] = dataset_copy['audio_data'].apply(
+                    lambda audio_data: json.dumps(audio_data.tolist())
+                )
                 dataset_copy.to_json(file_path, orient='records', lines=True)
             elif file_path.endswith('.pkl'):
                 dataset.to_pickle(file_path)
@@ -259,7 +309,7 @@ class DatasetManager(DataProcessing):
 
 class AudioFileManager(DataProcessing):
     @ staticmethod
-    def get_speaker_id(filename):
+    def get_speaker_id(filename: str) -> int:
         """
         Extracts the speaker ID from the filename.
 
@@ -272,7 +322,7 @@ class AudioFileManager(DataProcessing):
         return int(filename.split('-')[0])
 
     @staticmethod
-    def _list_files(directory):
+    def _list_files(directory: str) -> List[str]:
         """
         Lists `.wav` files in the specified directory.
 
@@ -285,13 +335,14 @@ class AudioFileManager(DataProcessing):
         return [file for file in os.listdir(directory) if file.endswith('.wav')]
 
     @staticmethod
-    def _count_files(directory):
+    def _count_files(directory: str) -> int:
         return len(AudioFileManager._list_files(directory))
 
     @staticmethod
-    def _move_unmatched_files(self, source_directory, unmatched_ids, category, sex, sample_type):
+    def _move_unmatched_files(self, source_directory: str, unmatched_ids: Set[int], category: str, sex: str, sample_type: str) -> None:
         """
-        Moves files from the source directory to a designated missing samples directory if their IDs match the unmatched IDs list.
+        Moves files from the source directory to a designated missing samples directory 
+        which will be created, if their IDs match the unmatched IDs list.
 
         Parameters:
         - source_directory (str): Directory from which files are moved.
@@ -303,17 +354,20 @@ class AudioFileManager(DataProcessing):
         for file in os.listdir(source_directory):
             speaker_id = AudioFileManager.get_speaker_id(file)
             if speaker_id in unmatched_ids:
-                target_directory = os.path.join(self.base_path, 'missing_samples', category, sex, sample_type)
+                target_directory = os.path.join(self.base_path, 
+                                                'missing_samples', 
+                                                category, 
+                                                sex, 
+                                                sample_type)
                 if not os.path.exists(target_directory):
                     os.makedirs(target_directory)
                 source_file_path = os.path.join(source_directory, file)
                 target_file_path = os.path.join(target_directory, file)
-                shutil.move(source_file_path, target_file_path)  # Move the file
-                # print(f"Moved {source_file_path} to {target_file_path}")
+                shutil.move(source_file_path, target_file_path)
 
 class AudioProcessing(DataProcessing):
     @staticmethod
-    def calculate_audio_duration(audio, sample_rate):
+    def calculate_audio_duration(audio: np.ndarray, sample_rate: int) -> float:
         """
         Calculates the duration of an audio file based on its audio data and sample rate.
 
@@ -324,11 +378,10 @@ class AudioProcessing(DataProcessing):
         Returns:
         - Duration of the audio in seconds.
         """
-        y = audio 
         return librosa.get_duration(y=audio, sr=sample_rate)
     
     @staticmethod
-    def calculate_pitch(audio_data, sample_rate):
+    def calculate_pitch(audio_data: np.ndarray, sample_rate: int) -> float:
         """
         Calculate the predominant pitch of an audio signal using librosa's piptrack method.
 
@@ -339,42 +392,46 @@ class AudioProcessing(DataProcessing):
         Returns:
         - float: The predominant pitch in Hz. If no significant pitch is detected, 0 is returned.
         """
-        pitches, magnitudes = librosa.piptrack(y=audio_data, sr=sample_rate, fmin=75, fmax=1500) # 75-1500 Hz to cover human voice range (with sufficient padding).
+        # Since 75-1500 Hz cover human voice range (with sufficient padding), 
+        # this is set as fmin and fmax.
+        pitches, magnitudes = librosa.piptrack(y=audio_data, sr=sample_rate, fmin=75, fmax=1500) 
         index_of_maximums = magnitudes.argmax(axis=0)
         pitches_with_high_magnitudes = pitches[index_of_maximums, range(pitches.shape[1])]
-        pitches_with_high_magnitudes = pitches_with_high_magnitudes[magnitudes.max(axis=0) > np.mean(magnitudes)]
+        pitches_with_high_magnitudes = pitches_with_high_magnitudes[magnitudes.max(axis=0) 
+                                                                    > np.mean(magnitudes)]
 
         if len(pitches_with_high_magnitudes) == 0:
-            return 0  # No significant pitch detected
-        pitch = np.median(pitches_with_high_magnitudes)
+            return 0.0  # No significant pitch detected
 
-        return pitch
+        return np.median(pitches_with_high_magnitudes)
     
     @staticmethod
-    def pad_audio(audio, sample_rate, desired_length):
-            """
-            Center pads the audio data to the desired length in seconds.
+    def pad_audio(audio: np.ndarray, sample_rate: int, desired_length: float) -> np.ndarray:
+        """
+        Center pads the audio data to the desired length in seconds.
 
-            Parameters:
-            - audio (numpy array): Audio data to be padded.
-            - sample_rate (int): Sample rate of the audio.
-            - desired_length (float): Desired duration in seconds.
+        Parameters:
+        - audio (numpy array): Audio data to be padded.
+        - sample_rate (int): Sample rate of the audio.
+        - desired_length (float): Desired duration in seconds.
+        
+        Returns:
+        - The padded audio data array.
+        """
+        current_length = len(audio)
+        desired_length_samples = int(desired_length * sample_rate)
+
+        if current_length > desired_length_samples:
+            return audio[:desired_length_samples]
             
-            Returns:
-            - The padded audio data array.
-            """
-            current_length = len(audio)
-            desired_length_samples = int(desired_length * sample_rate)
-            if current_length > desired_length_samples:
-                return audio[:desired_length_samples]
-            else:
-                total_padding = desired_length_samples - current_length
-                padding_before = total_padding // 2
-                padding_after = total_padding - padding_before
-                return np.pad(audio, (padding_before, padding_after), 'constant')
+        total_padding = desired_length_samples - current_length
+        padding_before = total_padding // 2
+        padding_after = total_padding - padding_before
+        
+        return np.pad(audio, (padding_before, padding_after), 'constant')
         
     @staticmethod
-    def pad_audios(audios, sample_rates, desired_length):
+    def pad_audios(audios: List[np.ndarray], sample_rates: List[int], desired_length: float) -> List[np.ndarray]:
         """
         Pads all the passed audios to the desired length in seconds.
 
@@ -386,18 +443,19 @@ class AudioProcessing(DataProcessing):
         Returns:
         - The padded list of audio arrays.
         """
-        return [AudioProcessing.pad_audio(audio, sample_rate, desired_length) for audio, sample_rate in zip(audios, sample_rates)]
+        return [AudioProcessing.pad_audio(audio, sample_rate, desired_length) \
+                for audio, sample_rate in zip(audios, sample_rates)]
     
     @staticmethod
-    def filter_audio(audio, sample_rate, type='low', cutoff=200):
+    def filter_audio(audio: np.ndarray, sample_rate: int, type: str = 'low', cutoff: int = 200) -> np.ndarray:
         """
         Applies a Butterworth filter to the audio data.
 
         Parameters:
         - audio (numpy array): Audio data to filter.
         - sample_rate (int): Sample rate of the audio.
-        - type (str): Filter type ('low', 'high', 'bandpass', etc.).
-        - cutoff (int): Cutoff frequency for the filter.
+        - type (str, optional): Filter type ('low', 'high', 'bandpass', etc.).
+        - cutoff (int, optional): Cutoff frequency for the filter.
 
         Returns:
         - The filtered audio data array.
@@ -406,10 +464,11 @@ class AudioProcessing(DataProcessing):
         normal_cutoff = cutoff / nyquist
         b, a = butter(5, normal_cutoff, btype=type, analog=False)
         filtered_audio = lfilter(b, a, audio)
+        
         return filtered_audio
 
     @staticmethod
-    def resample_audio(audio, orig_sample_rate, target_sample_rate):
+    def resample_audio(audio: np.ndarray, orig_sample_rate: int, target_sample_rate: int) -> np.ndarray:
         """
         Resamples audio from the original to the target sampling rate.
 
@@ -424,7 +483,7 @@ class AudioProcessing(DataProcessing):
         return librosa.resample(audio, orig_sr=orig_sample_rate, target_sr=target_sample_rate)
     
     @staticmethod
-    def resample_all_audios(audios, orig_sample_rates, target_sample_rate):
+    def resample_audios(audios: List[np.ndarray], orig_sample_rates: List[int], target_sample_rate: int) -> List[np.ndarray]:
         """
         Resamples audio from the original to the target sampling rate.
 
@@ -436,4 +495,5 @@ class AudioProcessing(DataProcessing):
         Returns:
         - The list of resampled audio arrays.
         """
-        return [AudioProcessing.resample_audio(audio, orig_sample_rate, target_sample_rate) for audio, orig_sample_rate in zip(audios, orig_sample_rates)]
+        return [AudioProcessing.resample_audio(audio, orig_sample_rate, target_sample_rate) \
+                for audio, orig_sample_rate in zip(audios, orig_sample_rates)]
