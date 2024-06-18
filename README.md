@@ -1,4 +1,4 @@
-# Hybrid Voice Disorder Detection Sytem
+# Hybrid Voice Disorder Detection System
 This repository includes all the necessary code and data for classifying audio samples as either healthy or pathological voices. Detailed explanations of each part of the code are provided within the code itself, complemented by a more comprehensive discussion in the associated bachelor thesis.
 
 For code usage, `main_script.py` serves as a guide. Although the descriptions may not always be elaborate, the script is well-organized and straightforward, ensuring that users can easily execute the code.
