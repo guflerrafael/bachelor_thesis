@@ -7,4 +7,4 @@ For code usage, `main_script.py` serves as a guide. Although the descriptions ma
 - `requirements.txt` lists all the dependencies required. Ensure your environment is compatible with these dependencies.
 - The zip file containing the voice samples should be placed in the `data` directory and named as specified in the script.
 - The device used for feature extraction has to be defined in `feature_extraction.py`.
-- Currently, the Jupyter notebook is not functional due to crashes occurring during model training. If certain parts of the code are unnecessary (e.g., if model training has already been completed), those sections should be commented out to avoid execution errors.
+- Currently, the Jupyter notebook is not functional due to crashes occurring during model training. If certain parts of the code are unnecessary (e.g., if model training has already been completed), those sections should be commented out to avoid unnecessary ressource usage.
